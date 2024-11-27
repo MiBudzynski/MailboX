@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
     getline(cin, login); // fgets(login, sizeof login, stdin);
     cout << "Podaj hasło: " << endl;
     getline(cin, password); // fgets(password, sizeof password, stdin);
+    
 
     if (connect(SocketFD, (struct sockaddr *)&sa, sizeof sa) == -1) {
         perror("connect failed");
