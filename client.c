@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 {
     struct sockaddr_in sa;
     int SocketFD;
-    int port=atoi(argv[2]);
+    int port=1100;//atoi(argv[2]);
     printf ("addr: %s\n",argv[1]);
     printf ("port: %i\n",port);
     SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -22,9 +22,19 @@ int main(int argc, char *argv[])
 
     memset(&sa, 0, sizeof sa);
 
+    char login[256];
+    bzero(login, 256);
+    char password[256];
+    bzero(password);
+
     sa.sin_addr.s_addr=inet_addr(argv[1]);
     sa.sin_family = AF_INET;
     sa.sin_port = htons(port);
+
+    printf("Podaj login: \n");
+    fgets(login, sizeof login, stdin);
+    printf("Podaj hasło:\n");
+    fgets(password, sizeof password, stdin);
 
     if (connect(SocketFD, (struct sockaddr *)&sa, sizeof sa) == -1) {
         perror("connect failed");
