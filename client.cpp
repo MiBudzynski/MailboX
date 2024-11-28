@@ -54,12 +54,18 @@ int main(int argc, char *argv[])
         memset(buff, 0, sizeof(buff));
         memset(buff_rcv, 0, sizeof(buff_rcv));
 
-        if (read(SocketFD, buff_rcv, sizeof(buff_rcv)) == 0) {
-            break;
-        } else {
-            cout << "received: " << buff_rcv << endl;
-            cin >> buff;
-            write(SocketFD, buff, sizeof(buff));
+        // Wysyłanie loginu
+        if (write(SocketFD, login.c_str(), login.size() + 1) <= 0) {
+            perror("Error sending login");
+            close(SocketFD);
+            exit(EXIT_FAILURE);
+        }
+
+        // Wysyłanie hasła
+        if (write(SocketFD, password.c_str(), password.size() + 1) <= 0) {
+            perror("Error sending password");
+            close(SocketFD);
+            exit(EXIT_FAILURE);
         }
     }
 
