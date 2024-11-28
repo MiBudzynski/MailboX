@@ -64,9 +64,10 @@ int main(){
         memset(buff, 0, sizeof(buff));
         bzero(buff,256);
         cout << "Enter message: ";
-        cin >> buff;
+        cin.ignore(); 
+        cin.getline(buff, sizeof(buff)); 
 
-        if (strcmp(buff, "exit") == 0) {
+        if (strcmp(buff, "exit\n") == 0) {
             break;
         }
 
