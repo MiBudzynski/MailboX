@@ -48,34 +48,43 @@ int main() {
 
     char login[256];
     char password[256];
+    bzero(login,256);
+    bzero(password,256);
 
 
+    // Odbiór loginu
+    if (read(rcv_socket, login, sizeof(login)) <= 0) {
+        cerr << "Error reading login\n";
+        close(rcv_socket);
+        close(my_socket);
+        return 1;
+    }
+    cout << "Received login: " << login << std::endl;
+
+    // Odbiór hasła
+    if (read(rcv_socket, password, sizeof(password)) <= 0) {
+        cerr << "Error reading password\n";
+        close(rcv_socket);
+        close(my_socket);
+        return 1;
+    }
+    cout << "Received password: " << password << std::endl;
+
+    // Pętla do dalszej komunikacji
     while (true) {
-        memset(login, 0, 256);      
-        memset(password, 0, 256);
+        memset(buff, 0, sizeof(buff));
+        bzero(buff,256);
 
-        cin >> buff;
-        if (strcmp(buff, "exit") == 0) {
+        if (read(rcv_socket, buff, sizeof(buff)) <= 0) {
+            cerr << "Client disconnected or error reading\n";
             break;
-        } else {
-            
-        // Odbiór loginu
-        if (read(rcv_socket, login, sizeof(login)) <= 0) {
-            cerr << "Error reading login\n";
-            close(rcv_socket);
-            close(my_socket);
-            return 1;
         }
-        cout << "Received login: " << login << std::endl;
+        cout << "Received message: " << buff << std::endl;
 
-        // Odbiór hasła
-        if (read(rcv_socket, password, sizeof(password)) <= 0) {
-            cerr << "Error reading password\n";
-            close(rcv_socket);
-            close(my_socket);
-            return 1;
-        }
-        cout << "Received password: " << password << std::endl;
+        // Możesz tutaj odpowiedzieć klientowi
+        if (write(rcv_socket, "Message received", 16) <= 0) {
+            cerr << "Error writing to client\n";
+            break;
         }
     }
 
