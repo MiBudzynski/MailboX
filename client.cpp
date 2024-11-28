@@ -8,13 +8,13 @@
 #include <unistd.h>
 
 using namespace std;
-
+// hello t ja
 int main(int argc, char *argv[])
 {
     struct sockaddr_in sa;
     int SocketFD;
     int port = 1100; // atoi(argv[2]);
-    cout << "addr: " << "127.0.0.1" << endl;
+    cout << "addr: " << argv[1] << endl;
     cout << "port: " << port << endl;
     
     SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -25,17 +25,17 @@ int main(int argc, char *argv[])
 
     memset(&sa, 0, sizeof sa);
 
-    char login[256] ;
-    char password[256] ;
+    string login;
+    string password;
 
-    sa.sin_addr.s_addr = inet_addr("127.0.0.1");//argv[1]);
+    sa.sin_addr.s_addr = inet_addr(argv[1]);
     sa.sin_family = AF_INET;
     sa.sin_port = htons(port);
 
     cout << "Podaj login: " << endl;
-    cin>>login;
+    getline(cin, login); // fgets(login, sizeof login, stdin);
     cout << "Podaj hasło: " << endl;
-    cin>>password;// fgets(password, sizeof password, stdin);
+    getline(cin, password); // fgets(password, sizeof password, stdin);
     
 
     if (connect(SocketFD, (struct sockaddr *)&sa, sizeof sa) == -1) {
@@ -50,42 +50,17 @@ int main(int argc, char *argv[])
     char buff[256];
     char buff_rcv[256];
 
-    // Wysyłanie loginu
-    if (write(SocketFD, login, sizeof login) <= 0) {
-        perror("Error sending login");
-        close(SocketFD);
-        exit(EXIT_FAILURE);
-    }
-
-    // Wysyłanie hasła
-    if (write(SocketFD, password, sizeof password) <= 0) {
-        perror("Error sending password");
-        close(SocketFD);
-        exit(EXIT_FAILURE);
-    }
-
-    // Pętla do dalszej komunikacji
     while (true) {
         memset(buff, 0, sizeof(buff));
-        bzero(buff,256);
-        cout << "Enter message: ";
-        cin >> buff;
-
-        if (strcmp(buff, "exit") == 0) {
-            break;
-        }
-
-        if (write(SocketFD, buff, sizeof buff) <= 0) {
-            perror("Error sending message");
-            break;
-        }
-
         memset(buff_rcv, 0, sizeof(buff_rcv));
-        if (read(SocketFD, buff_rcv, sizeof(buff_rcv)) <= 0) {
-            perror("Error receiving response");
+
+        if (read(SocketFD, buff_rcv, sizeof(buff_rcv)) == 0) {
             break;
+        } else {
+            cout << "received: " << buff_rcv << endl;
+            cin >> buff;
+            write(SocketFD, buff, sizeof(buff));
         }
-        cout << "Server response: " << buff_rcv << endl;
     }
 
     close(SocketFD);
