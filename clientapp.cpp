@@ -1,148 +1,170 @@
-#include <sys/socket.h>
+#include <iostream>
+#include <cstring>
+#include <cstdlib>
+#include <unistd.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <iostream>
-#include <string>
-#include <cstring>
-#include <unistd.h>
 
 using namespace std;
 
-void clearBuffer(char *buffer, size_t size) {
-    memset(buffer, 0, size);
+void menu() {
+    cout << "====== MENU ======" << endl;
+    cout << "1. Register" << endl;
+    cout << "2. Login" << endl;
+    cout << "3. Exit" << endl;
+    cout << "==================" << endl;
+    cout << "Choose an option: ";
 }
 
-void createAccount() {
-    char name[256], surname[256], login[256], password[256];
-    cout << "Podaj imię: ";
-    cin >> name;
-    cout << "Podaj nazwisko: ";
-    cin >> surname;
-    cout << "Podaj login: ";
-    cin >> login;
-    cout << "Podaj hasło: ";
-    cin >> password;
+bool connectToServer(int &socketFD, const string &serverIP, int port) {
+    struct sockaddr_in serverAddr;
+    memset(&serverAddr, 0, sizeof(serverAddr));
 
-    // Tutaj można dodać zapisywanie danych lokalnie lub wysłanie do serwera rejestracji (jeśli to konieczne).
-    cout << "Konto zostało założone. Możesz teraz się zalogować.\n";
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(port);
+    serverAddr.sin_addr.s_addr = inet_addr(serverIP.c_str());
+
+    socketFD = socket(AF_INET, SOCK_STREAM, 0);
+    if (socketFD < 0) {
+        cerr << "Error creating socket" << endl;
+        return false;
+    }
+
+    if (connect(socketFD, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+        cerr << "Error connecting to server" << endl;
+        close(socketFD);
+        return false;
+    }
+
+    cout << "Connected to server" << endl;
+    return true;
 }
 
-bool login(int &SocketFD, struct sockaddr_in &sa) {
-    char login[256], password[256];
-    cout << "Podaj login: ";
+bool registerUser(int socketFD) {
+    string login, password;
+
+    cout << "Enter login: ";
     cin >> login;
-    cout << "Podaj hasło: ";
+    cout << "Enter password: ";
     cin >> password;
 
-    // Tworzenie gniazda
-    SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (SocketFD == -1) {
-        perror("cannot create socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // Próba połączenia z serwerem
-    if (connect(SocketFD, (struct sockaddr *)&sa, sizeof sa) == -1) {
-        perror("connect failed");
-        close(SocketFD);
-        exit(EXIT_FAILURE);
-    }
-
-    // Wysyłanie danych logowania do serwera
-    string loginData = string("LOGIN ") + login + " " + password;
-    if (write(SocketFD, loginData.c_str(), loginData.size()) <= 0) {
-        perror("Error sending login data");
-        close(SocketFD);
-        exit(EXIT_FAILURE);
+    string message = "REGISTER " + login + " " + password;
+    if (write(socketFD, message.c_str(), message.size()) <= 0) {
+        cerr << "Error sending registration data" << endl;
+        return false;
     }
 
     char response[256];
-    clearBuffer(response, sizeof(response));
-    if (read(SocketFD, response, sizeof(response)) <= 0) {
-        perror("Error receiving response");
-        close(SocketFD);
-        exit(EXIT_FAILURE);
-    }
-
-    string serverResponse = response;
-    if (serverResponse == "SUCCESS") {
-        cout << "Logowanie powiodło się.\n";
-        return true;
-    } else {
-        cout << "Błąd logowania: " << serverResponse << endl;
-        close(SocketFD); // Zamknięcie połączenia po nieudanym logowaniu
+    memset(response, 0, sizeof(response));
+    if (read(socketFD, response, sizeof(response)) <= 0) {
+        cerr << "Error receiving response" << endl;
         return false;
     }
+
+    cout << "Server response: " << response << endl;
+    return strcmp(response, "Registration successful") == 0;
 }
 
-int main(int argc, char *argv[]) {
-    struct sockaddr_in sa;
-    int SocketFD;
-    int port = 1100;
+bool loginUser(int socketFD) {
+    string login, password;
 
-    // Konfiguracja serwera
-    memset(&sa, 0, sizeof sa);
-    sa.sin_addr.s_addr = inet_addr("127.0.0.1");
-    sa.sin_family = AF_INET;
-    sa.sin_port = htons(port);
+    cout << "Enter login: ";
+    cin >> login;
+    cout << "Enter password: ";
+    cin >> password;
 
-    bool loggedIn = false;
-    while (true) {
-        cout << "\nMenu:\n";
-        cout << "1. Załóż konto\n";
-        cout << "2. Zaloguj się\n";
-        cout << "3. Wyjdź\n";
-        cout << "Wybierz opcję: ";
-        int choice;
-        cin >> choice;
-
-        switch (choice) {
-            case 1:
-                createAccount();
-                break;
-            case 2:
-                loggedIn = login(SocketFD, sa);
-                if (loggedIn) {
-                    cout << "Przechodzenie do dalszej komunikacji...\n";
-                    goto startCommunication;
-                }
-                break;
-            case 3:
-                cout << "Zamykanie programu.\n";
-                exit(EXIT_SUCCESS);
-            default:
-                cout << "Nieprawidłowa opcja, spróbuj ponownie.\n";
-        }
+    string message = "LOGIN " + login + " " + password;
+    if (write(socketFD, message.c_str(), message.size()) <= 0) {
+        cerr << "Error sending login data" << endl;
+        return false;
     }
 
-startCommunication:
-    // Dalsza komunikacja po zalogowaniu
-    char buff[256];
-    char buff_rcv[256];
+    char response[256];
+    memset(response, 0, sizeof(response));
+    if (read(socketFD, response, sizeof(response)) <= 0) {
+        cerr << "Error receiving response" << endl;
+        return false;
+    }
+
+    cout << "Server response: " << response << endl;
+    return strcmp(response, "Login successful") == 0;
+}
+
+void chatWithServer(int socketFD) {
+    string message;
+    char response[256];
 
     while (true) {
         cout << "Enter message (type 'exit' to quit): ";
-        cin >> buff;
+        cin >> message;
 
-        if (strcmp(buff, "exit") == 0) {
-            cout << "Zamykanie połączenia.\n";
+        if (message == "exit") {
+            cout << "Disconnecting..." << endl;
             break;
         }
 
-        if (write(SocketFD, buff, sizeof(buff)) <= 0) {
-            perror("Error sending message");
+        if (write(socketFD, message.c_str(), message.size()) <= 0) {
+            cerr << "Error sending message" << endl;
             break;
         }
 
-        clearBuffer(buff_rcv, sizeof(buff_rcv));
-        if (read(SocketFD, buff_rcv, sizeof(buff_rcv)) <= 0) {
-            perror("Error receiving response");
+        memset(response, 0, sizeof(response));
+        if (read(socketFD, response, sizeof(response)) <= 0) {
+            cerr << "Error receiving response" << endl;
             break;
         }
-        cout << "Server response: " << buff_rcv << endl;
+
+        cout << "Server response: " << response << endl;
+    }
+}
+
+int main() {
+    const string serverIP = "127.0.0.1";
+    const int serverPort = 1100;
+
+    int option;
+
+    while (true) {
+        menu();
+        cin >> option;
+
+        if (option == 3) {
+            cout << "Exiting..." << endl;
+            break;
+        }
+
+        int socketFD;
+        if (!connectToServer(socketFD, serverIP, serverPort)) {
+            continue;
+        }
+
+        switch (option) {
+            case 1:
+                if (registerUser(socketFD)) {
+                    cout << "Registration successful" << endl;
+                } else {
+                    cout << "Registration failed" << endl;
+                }
+                break;
+
+            case 2:
+                if (loginUser(socketFD)) {
+                    cout << "Login successful" << endl;
+                    chatWithServer(socketFD);
+                } else {
+                    cout << "Login failed" << endl;
+                }
+                break;
+
+            default:
+                cout << "Invalid option" << endl;
+                break;
+        }
+
+        close(socketFD);
     }
 
-    close(SocketFD);
-    return EXIT_SUCCESS;
+    return 0;
 }
