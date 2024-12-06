@@ -6,8 +6,26 @@
 #include <string>
 #include <cstring>
 #include <unistd.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <pthread.h>
 
 using namespace std;
+
+void * recvThread(void *arg)
+{
+    char buff_rcv[256];
+    memset(buff_rcv, 0, sizeof(buff_rcv));
+    int SocketFD = *((int *)arg);
+    while(true){
+        if (read(SocketFD, buff_rcv, sizeof buff_rcv ) <= 0) {
+            perror("Error receiving response");
+            break;
+        }
+        cout << "Server response: " << buff_rcv << endl;
+    }
+    pthread_exit(NULL);
+}
 
 int main(){
     struct sockaddr_in sa;
@@ -42,9 +60,6 @@ int main(){
         cout << "Connection accepted" << endl;
     }
 
-    char buff[256];
-    char buff_rcv[256];
-
     // Wysyłanie loginu
     if (write(SocketFD, login, sizeof login) <= 0) {
         perror("Error sending login");
@@ -59,30 +74,25 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
+    pthread_t thread_id;
+    if( pthread_create(&thread_id, NULL, recvThread, &SocketFD) != 0 )
+        printf("Failed to create thread\n");
+    pthread_detach(thread_id);
+
+    cin.ignore(); 
+    char buff[256];
     // Pętla do dalszej komunikacji
     while (true) {
         memset(buff, 0, sizeof(buff));
-        bzero(buff,256);
         cout << "Enter message: ";
-        cin.ignore(); 
         cin.getline(buff, sizeof(buff)); 
-
-        if (strcmp(buff, "exit\n") == 0) {
+        if (strcmp(buff, "exit") == 0) {
             break;
         }
-
         if (write(SocketFD, buff, sizeof buff) <= 0) {
             perror("Error sending message");
             break;
         }
-
-        memset(buff_rcv, 0, sizeof(buff_rcv));
-        bzero(buff_rcv,256);
-        if (read(SocketFD, buff_rcv, sizeof buff_rcv ) <= 0) {
-            perror("Error receiving response");
-            break;
-        }
-        cout << "Server response: " << buff_rcv << endl;
     }
 
     close(SocketFD);

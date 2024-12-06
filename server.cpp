@@ -68,7 +68,6 @@ int main() {
     cout << "Received password: " << password << std::endl;
 
     char buff[256];
-    char buff_rcv[256];
     // Pętla do dalszej komunikacji
     while (true) {
         memset(buff, 0, sizeof(buff));
