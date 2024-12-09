@@ -9,68 +9,64 @@
 #include <fcntl.h> 
 #include <unistd.h>
 #include <pthread.h>
+#include "Database.h"
 
 using namespace std;
 
-void loguj(char login[256], char password[256], int newSocket){
-    memset(login, 0, 256);
-    memset(password, 0, 256);
+void loguj(string &login, string &password, int newSocket) {
+    char loginBuffer[256], passwordBuffer[256];
+    memset(loginBuffer, 0, 256);
+    memset(passwordBuffer, 0, 256);
 
     // Odbiór loginu
-    if (read(newSocket, login, 256) <= 0) {
+    if (read(newSocket, loginBuffer, 256) <= 0) {
         cerr << "Error reading login\n";
         close(newSocket);
         pthread_exit(NULL);
     }
+    login = string(loginBuffer);
     cout << "Received login: " << login << endl;
 
     // Odbiór hasła
-    if (read(newSocket, password, 256) <= 0) {
+    if (read(newSocket, passwordBuffer, 256) <= 0) {
         cerr << "Error reading password\n";
         close(newSocket);
         pthread_exit(NULL);
     }
+    password = string(passwordBuffer);
     cout << "Received password: " << password << endl;
 }
 
-bool czyIstnieje(char login[256], char password[256]) {
-    return 1;
-}
-
-void createAccaunt(char login[256], char password[256]) {
-//ToDo
-}
-
-void *socketThread(void *arg)
-{
+void *socketThread(void *arg) {
     int newSocket = *((int *)arg);
-    char option[256];
-    char login[256];
-    char password[256];
-    memset(option, 0, sizeof(option));
-    memset(login, 0, sizeof(login));
-    memset(password, 0, sizeof(password));
+    string option, login, password;
 
-    // wybor czy zakladanie konta czy logowanie do juz istniejacego
-    if (read(newSocket, option, sizeof(option)) <= 0) {
-        cerr << "Error reading login option\n";
+    char optionBuffer[256];
+    memset(optionBuffer, 0, sizeof(optionBuffer));
+
+    if (read(newSocket, optionBuffer, sizeof(optionBuffer)) <= 0) {
+        cerr << "Error reading option\n";
         close(newSocket);
+        pthread_exit(NULL);
     }
-    cout << "User chose option: " << option << std::endl;
+    option = string(optionBuffer);
+    cout << "User chose option: " << option << endl;
 
     loguj(login, password, newSocket);
-    if(strcmp(option, "zaloguj") == 0){
-        while(czyIstnieje(login, password) == 0){
-            write(newSocket, "Wrong username or password\n", 26);
+
+    if (option == "zaloguj") {
+        while (!czyIstnieje(login, password)) {
+            write(newSocket, "Wrong username or password\n", 28);
             loguj(login, password, newSocket);
         }
-    }
-    else{
-        while(czyIstnieje(login, password) == 1){
-            write(newSocket, "Username already taken", 26);
+    } else {
+        while (czyIstnieje(login, password)) {
+            write(newSocket, "Username already taken\n", 23);
             loguj(login, password, newSocket);
         }
-        createAccaunt(login, password);
+        if (!createAccaunt(login, password)) {
+            cerr << "Error adding new account\n";
+        }
     }
     
     //pętla do dalszej komunikacji
@@ -122,6 +118,10 @@ int main() {
         return 1;
     }
 
+    if(create() == -1){
+        cerr << "Error creating Database";
+    }
+
     pthread_t thread_id;
     // Pętla do dalszej komunikacji
     while (true) {
@@ -137,9 +137,7 @@ int main() {
 
         pthread_detach(thread_id);
     }
-
     close(my_socket);
-
     return 0;
 }
 
