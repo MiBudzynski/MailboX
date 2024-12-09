@@ -12,28 +12,68 @@
 
 using namespace std;
 
-void * socketThread(void *arg)
-{
-    int newSocket = *((int *)arg);
-    char login[256];
-    char password[256];
-    bzero(login,256);
-    bzero(password,256);
+void loguj(char login[256], char password[256], int newSocket){
+    memset(login, 0, 256);
+    memset(password, 0, 256);
 
     // Odbiór loginu
-    if (read(newSocket, login, sizeof(login)) <= 0) {
+    if (read(newSocket, login, 256) <= 0) {
         cerr << "Error reading login\n";
         close(newSocket);
+        pthread_exit(NULL);
     }
-    cout << "Received login: " << login << std::endl;
+    cout << "Received login: " << login << endl;
 
     // Odbiór hasła
-    if (read(newSocket, password, sizeof(password)) <= 0) {
+    if (read(newSocket, password, 256) <= 0) {
         cerr << "Error reading password\n";
         close(newSocket);
+        pthread_exit(NULL);
     }
-    cout << "Received password: " << password << std::endl;
+    cout << "Received password: " << password << endl;
+}
+
+bool czyIstnieje(char login[256], char password[256]) {
+    return 1;
+}
+
+void createAccaunt(char login[256], char password[256]) {
+//ToDo
+}
+
+void *socketThread(void *arg)
+{
+    int newSocket = *((int *)arg);
+    char option[256];
+    char login[256];
+    char password[256];
+    memset(option, 0, sizeof(option));
+    memset(login, 0, sizeof(login));
+    memset(password, 0, sizeof(password));
+
+    // wybor czy zakladanie konta czy logowanie do juz istniejacego
+    if (read(newSocket, option, sizeof(option)) <= 0) {
+        cerr << "Error reading login option\n";
+        close(newSocket);
+    }
+    cout << "User chose option: " << option << std::endl;
+
+    loguj(login, password, newSocket);
+    if(strcmp(option, "zaloguj") == 0){
+        while(czyIstnieje(login, password) == 0){
+            write(newSocket, "Wrong username or password\n", 26);
+            loguj(login, password, newSocket);
+        }
+    }
+    else{
+        while(czyIstnieje(login, password) == 1){
+            write(newSocket, "Username already taken", 26);
+            loguj(login, password, newSocket);
+        }
+        createAccaunt(login, password);
+    }
     
+    //pętla do dalszej komunikacji
     while(true){
         char buff[256];
         memset(buff, 0, sizeof(buff));
@@ -45,7 +85,7 @@ void * socketThread(void *arg)
         cout << "Received message: " << buff << std::endl;
 
         // Wysyłanie odpowiedzi klientowi
-        if (write(newSocket, "Message received", 16) <= 0) {
+        if (write(newSocket, "Message received\n", 16) <= 0) {
             cerr << "Error writing to client\n";
             break;
         }

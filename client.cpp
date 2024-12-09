@@ -6,8 +6,6 @@
 #include <string>
 #include <cstring>
 #include <unistd.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <pthread.h>
 
 using namespace std;
@@ -43,14 +41,6 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
-    char login[256] ;
-    char password[256] ;
-
-    cout << "Podaj login: " << endl;
-    cin>>login;
-    cout << "Podaj hasło: " << endl;
-    cin>>password;
-
     if (connect(SocketFD, (struct sockaddr *)&sa, sizeof sa) == -1) {
         perror("connect failed");
         close(SocketFD);
@@ -60,7 +50,19 @@ int main(){
         cout << "Connection accepted" << endl;
     }
 
+    char login[256] ;
+    cout << "Jesli chcesz sie zalogowac napisz 'zaloguj'\n";
+    cout << "jesli chcesz zalozyc konto napisz 'zaloz konto'" << endl;
+    cin >> login;
+    if (write(SocketFD, login, sizeof login) <= 0) {
+        perror("Error sending login option");
+        close(SocketFD);
+        exit(EXIT_FAILURE);
+    }
+
     // Wysyłanie loginu
+    cout << "Podaj login: " << endl;
+    cin>>login;
     if (write(SocketFD, login, sizeof login) <= 0) {
         perror("Error sending login");
         close(SocketFD);
@@ -68,7 +70,9 @@ int main(){
     }
 
     // Wysyłanie hasła
-    if (write(SocketFD, password, sizeof password) <= 0) {
+    cout << "Podaj hasło: " << endl;
+    cin>>login;
+    if (write(SocketFD, login, sizeof login) <= 0) {
         perror("Error sending password");
         close(SocketFD);
         exit(EXIT_FAILURE);
