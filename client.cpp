@@ -52,7 +52,7 @@ int main(){
 
     char login[256] ;
     cout << "Jesli chcesz sie zalogowac napisz 'zaloguj'\n";
-    cout << "jesli chcesz zalozyc konto napisz 'zaloz konto'" << endl;
+    cout << "jesli chcesz zalozyc konto napisz 'zaloz'" << endl;
     cin >> login;
     if (write(SocketFD, login, sizeof login) <= 0) {
         perror("Error sending login option");
