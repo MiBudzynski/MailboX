@@ -52,6 +52,32 @@ bool czyIstnieje(const std::string &username, const std::string &password) {
     return exists;
 }
 
+bool czyIstniejeUzytkownik(const std::string &username) {
+    sqlite3 *db;
+    if (sqlite3_open("MailBase.db", &db)) {
+        return false;
+    }
+
+    const char *selectSQL = "SELECT COUNT(*) FROM Users WHERE UserName = ?;";
+    sqlite3_stmt *stmt;
+    if (sqlite3_prepare_v2(db, selectSQL, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_close(db);
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_STATIC);
+
+    bool exists = false;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        exists = sqlite3_column_int(stmt, 0) > 0;
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    return exists;
+}
+
 int create(){
     sqlite3* db;
 

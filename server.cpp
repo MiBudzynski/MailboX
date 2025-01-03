@@ -56,12 +56,16 @@ void *socketThread(void *arg) {
 
     if (option == "zaloguj") {
         while (!czyIstnieje(login, password)) {
-            write(newSocket, "Wrong username or password\n", 28);
+            if (write(newSocket, "Wrong username or password\n", 28) < 0) {
+                perror("Error writing to socket");
+            }
             loguj(login, password, newSocket);
         }
     } else {
-        while (czyIstnieje(login, password)) {
-            write(newSocket, "Username already taken\n", 23);
+        while (czyIstniejeUzytkownik(login)) {
+            if (write(newSocket, "Username already taken\n", 23) < 0){
+                perror("Error writing to socket");
+            }
             loguj(login, password, newSocket);
         }
         if (!createAccaunt(login, password)) {
