@@ -13,10 +13,20 @@
 
 using namespace std;
 
-void loguj(string &login, string &password, int newSocket) {
-    char loginBuffer[256], passwordBuffer[256];
+void loguj(string &option, string &login, string &password, int newSocket) {
+    char optionBuffer[256], loginBuffer[256], passwordBuffer[256];
     memset(loginBuffer, 0, 256);
     memset(passwordBuffer, 0, 256);
+    memset(optionBuffer, 0, 256);
+
+    // Odbiór opcji wejscia
+    if (read(newSocket, optionBuffer, sizeof(optionBuffer)) <= 0) {
+        cerr << "Error reading option\n";
+        close(newSocket);
+        pthread_exit(NULL);
+    }
+    option = string(optionBuffer);
+    cout << "User chose option: " << option << endl;
 
     // Odbiór loginu
     if (read(newSocket, loginBuffer, 256) <= 0) {
@@ -40,42 +50,21 @@ void loguj(string &login, string &password, int newSocket) {
 void *socketThread(void *arg) {
     int newSocket = *((int *)arg);
     string option, login, password;
-
-    char optionBuffer[256];
-    memset(optionBuffer, 0, sizeof(optionBuffer));
-
-    if (read(newSocket, optionBuffer, sizeof(optionBuffer)) <= 0) {
-        cerr << "Error reading option\n";
-        close(newSocket);
-        pthread_exit(NULL);
-    }
-    option = string(optionBuffer);
-    cout << "User chose option: " << option << endl;
-
-    loguj(login, password, newSocket);
-
-    if (option == "zaloguj") {
-        while (!czyIstnieje(login, password)) {
-            if (write(newSocket, "Wrong username or password\n", 28) < 0) {
+    do{
+        loguj(option, login, password, newSocket);
+        if(option == "zaloguj" && czyIstnieje(login, password))
+            break;
+        if(option == "rejestruj" && !czyIstniejeUzytkownik(login)){
+            if (!createAccount(login, password)) cerr << "Error adding new account\n";
+            break;
+        }
+        if (write(newSocket, "Access denied", 14) < 0)
                 perror("Error writing to socket");
-            }
-            loguj(login, password, newSocket);
-        }
-    } else {
-        while (czyIstniejeUzytkownik(login)) {
-            if (write(newSocket, "Username already taken\n", 23) < 0){
-                perror("Error writing to socket");
-            }
-            loguj(login, password, newSocket);
-        }
-        if (!createAccount(login, password)) {
-            cerr << "Error adding new account\n";
-        }
-    }
+    }while(1);
     if (write(newSocket, "Accept", 7) < 0){
         perror("Error writing to socket");
     }
-    
+
     //pętla do dalszej komunikacji
     while(true){
         char buff[256];

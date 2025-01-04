@@ -70,10 +70,12 @@ bool log(const string &username, const string &password, const string &option){
         close(SocketFD);
         exit(EXIT_FAILURE);
     }
-    char rcv[7];
+    char rcv[256];
+    memset(rcv, 0, 256);
     if (read(SocketFD, rcv, sizeof rcv ) <= 0) {
         perror("Error receiving response");
     }
+    cout << "^^^^^^^^^^^^^^^" << rcv << endl;
     if(strcmp(rcv, "Accept") != 0) return false;
 
     pthread_t thread_id;
