@@ -2,7 +2,7 @@
 #include <sqlite3.h>
 #include "Database.h"
 
-int createAccaunt(const std::string &username, const std::string &password) {
+int createAccount(const std::string &username, const std::string &password) {
     sqlite3 *db;
     if (sqlite3_open("MailBase.db", &db)) {
         return 0;

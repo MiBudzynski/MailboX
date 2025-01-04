@@ -68,9 +68,12 @@ void *socketThread(void *arg) {
             }
             loguj(login, password, newSocket);
         }
-        if (!createAccaunt(login, password)) {
+        if (!createAccount(login, password)) {
             cerr << "Error adding new account\n";
         }
+    }
+    if (write(newSocket, "Accept", 7) < 0){
+        perror("Error writing to socket");
     }
     
     //pętla do dalszej komunikacji
