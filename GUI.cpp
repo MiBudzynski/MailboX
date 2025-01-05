@@ -7,58 +7,76 @@
 #include <QMessageBox>
 #include <QString>
 #include <QTextEdit>
+#include <QFont>
+#include <QFontDatabase>
 #include <thread>
 #include <iostream>
 #include "client.h"
 
 using namespace std;
 
-void showMessageInterface(QWidget* mainWindow) {
+void showSendInterface(QWidget* window);
+
+void showMessageInterface(QWidget* window) {
     QWidget *messageWindow = new QWidget;
     messageWindow->setWindowTitle("SuperEkstraMail - Wiadomości");
+    messageWindow->resize(1920, 1080);
+
+    QPushButton *sendButton = new QPushButton("Napisz wiadomosc");
 
     QVBoxLayout *layout = new QVBoxLayout;
-
-    QLabel *statusLabel = new QLabel("Status: Połączono z serwerem");
-    QTextEdit *messageBox = new QTextEdit;
-    messageBox->setPlaceholderText("Wpisz wiadomość...");
-    messageBox->setFixedHeight(100);
-    
-    QPushButton *sendButton = new QPushButton("Wyślij wiadomość");
-    QPushButton *logoutButton = new QPushButton("Wyloguj się");
-
-    layout->addWidget(statusLabel);
-    layout->addWidget(messageBox);
     layout->addWidget(sendButton);
-    layout->addWidget(logoutButton);
     messageWindow->setLayout(layout);
 
-    // Obsługa przycisku "Wyślij wiadomość"
-    QObject::connect(sendButton, &QPushButton::clicked, [&]() {
-        string message = messageBox->toPlainText().toStdString();
-        if (!message.empty()) {
-            if (send()) {
-                QMessageBox::information(nullptr, "Sukces", "Wiadomość wysłana!");
-                messageBox->clear();
-            } else {
-                QMessageBox::critical(nullptr, "Błąd", "Nie udało się wysłać wiadomości.");
-            }
-        } else {
-            QMessageBox::warning(nullptr, "Uwaga", "Pole wiadomości jest puste!");
-        }
+    QObject::connect(sendButton, &QPushButton::clicked, [messageWindow]() {
+        showSendInterface(messageWindow);
     });
 
-    // Obsługa przycisku "Wyloguj się"
-    QObject::connect(logoutButton, &QPushButton::clicked, [&]() {
-        messageWindow->close();
-        mainWindow->show();
-    });
-
-    mainWindow->hide();
     messageWindow->show();
+    window->close();
 }
 
-void handleLog(QLineEdit* usernameField, QLineEdit* passwordField, QLabel* statusLabel, string option, QWidget* mainWindow) {
+void showSendInterface(QWidget* window) {
+    QWidget *sendWindow = new QWidget;
+    sendWindow->setWindowTitle("SuperEkstraMail - Wysylanie");
+    sendWindow->resize(1920, 1080);
+
+    QFont font;
+    font.setPointSize(20);
+    QApplication::setFont(font);
+    QLineEdit *reciverField = new QLineEdit;
+    reciverField->setPlaceholderText("Podaj odbiorce");
+    QLineEdit *topicField = new QLineEdit;
+    topicField->setPlaceholderText("Podaj temat");
+    QTextEdit *messageField = new QTextEdit;
+    messageField->setPlaceholderText("Napisz wiadomość...");
+    messageField->setFixedHeight(400);
+    QPushButton *sendButton = new QPushButton("Wyslij");
+    QPushButton *backButton = new QPushButton("Wroc do skrzynki odbiorczej");
+
+    QVBoxLayout *layout = new QVBoxLayout;
+    layout->setSpacing(20);
+    layout->addWidget(reciverField);
+    layout->addWidget(topicField);
+    layout->addWidget(messageField);
+    layout->addWidget(sendButton);
+    layout->addWidget(backButton);
+    layout->setContentsMargins(20, 20, 20, 20);
+    sendWindow->setLayout(layout);
+
+    QObject::connect(sendButton, &QPushButton::clicked, [sendWindow]() {
+        send();
+    });
+
+    QObject::connect(backButton, &QPushButton::clicked, [sendWindow]() {
+        showMessageInterface(sendWindow);
+    });
+
+    sendWindow->show();
+    window->close();
+}
+
+void handleLog(QLineEdit* usernameField, QLineEdit* passwordField, QLabel* statusLabel, string option, QWidget* window) {
     string username = usernameField->text().toStdString();
     string password = passwordField->text().toStdString();
 
@@ -66,10 +84,13 @@ void handleLog(QLineEdit* usernameField, QLineEdit* passwordField, QLabel* statu
         cout << "_____________________ udalo: " << endl;
         statusLabel->setText("Status: Zalogowany");
         QMessageBox::information(nullptr, "Sukces", "Zalogowano pomyślnie!");
-        showMessageInterface(mainWindow);
-    } else {
+        showMessageInterface(window);
+    } else if(option == "zaloguj"){
         cout << "_________________ dupa: " << endl;
         QMessageBox::critical(nullptr, "Błąd", "Niepoprawny login lub hasło.");
+    } else{
+        cout << "_________________ dupa: " << endl;
+        QMessageBox::critical(nullptr, "Błąd", "Nazwa uzytkownika juz zajeta");
     }
 }
 
@@ -79,12 +100,18 @@ int main(int argc, char *argv[]) {
 
     QWidget window;
     window.setWindowTitle("SuperEkstraMail");
-    window.resize(1200, 800);
+    window.resize(1920, 1080);
+
+    int fontId = QFontDatabase::addApplicationFont("Monoton-Regular.ttf");
+    QString fontFamily = QFontDatabase::applicationFontFamilies(fontId).at(0);
+    QLabel *titleLabel = new QLabel("Super\nEkstra\nMail");
+    QFont titleFont(fontFamily, 100);
+    titleLabel->setFont(titleFont);
+    titleLabel->setAlignment(Qt::AlignCenter);
 
     QFont font;
     font.setPointSize(20);
     QApplication::setFont(font);
-
     QLabel *statusLabel = new QLabel("Status: Niepołączony");
     QLineEdit *usernameField = new QLineEdit;
     usernameField->setPlaceholderText("Podaj nazwę użytkownika");
@@ -97,6 +124,7 @@ int main(int argc, char *argv[]) {
 
     QVBoxLayout *layout = new QVBoxLayout;
     layout->setSpacing(20);
+    layout->addWidget(titleLabel);
     layout->addWidget(statusLabel);
     layout->addWidget(usernameField);
     layout->addWidget(passwordField);
