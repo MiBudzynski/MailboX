@@ -7,12 +7,15 @@
 #include <cstring>
 #include <unistd.h>
 #include <pthread.h>
+#include <functional>
 #include "client.h"
 
 using namespace std;
 
 struct sockaddr_in sa;
 int SocketFD;
+
+function<void(const std::string&)> updateGuiCallback;
 
 void * recvThread(void *arg)
 {
@@ -24,7 +27,11 @@ void * recvThread(void *arg)
             perror("Error receiving response");
             break;
         }
+        string message(buff_rcv);
         cout << "Server response: " << buff_rcv << endl;
+        if (updateGuiCallback) {
+            updateGuiCallback(message);
+        }
     }
     pthread_exit(NULL);
 }
@@ -70,6 +77,7 @@ bool log(const string &username, const string &password, const string &option){
         close(SocketFD);
         exit(EXIT_FAILURE);
     }
+    //sprawdzanie czy zaakceptowano dane
     char rcv[256];
     memset(rcv, 0, 256);
     if (read(SocketFD, rcv, sizeof rcv ) <= 0) {
@@ -78,29 +86,48 @@ bool log(const string &username, const string &password, const string &option){
     cout << "^^^^^^^^^^^^^^^" << rcv << endl;
     if(strcmp(rcv, "Accept") != 0) return false;
 
+    //odbieranie listy wiadomosci
+    /*while(1){
+        char buff[256];
+        memset(buff, 0, sizeof(buff));
+        if (read(SocketFD, buff, sizeof(buff)) <= 0){
+            perror("Error receiving response");
+            break;
+        }else{
+            //wysylanie do GUI;
+        }
+        if(strcmp(buff, "Brak nowych wiadomosci") == 0)
+            break;
+    }*/
+
+    //tworzenie watku do odbioru nowych wiadomosci
     pthread_t thread_id;
+    updateGuiCallback = nullptr;
     if( pthread_create(&thread_id, NULL, recvThread, &SocketFD) != 0 )
         printf("Failed to create thread\n");
     pthread_detach(thread_id);
+
     return true;
 }
 
-bool send(){
-    char buff[256];
-    // Pętla do dalszej komunikacji
-    while (true) {
-        memset(buff, 0, sizeof(buff));
-        cout << "Enter message: ";
-        cin.getline(buff, sizeof(buff)); 
-        if (strcmp(buff, "exit") == 0) {
-            break;
-        }
-        if (write(SocketFD, buff, sizeof buff) <= 0) {
-            perror("Error sending message");
-            break;
-        }
+bool send(const string &reciver, const string &topic, const string &message){
+    //przesylanie danych wiadomosci
+    if (write(SocketFD, reciver.c_str(), reciver.length()) <= 0) {
+        perror("Error sending reciver");
+        close(SocketFD);
+        exit(EXIT_FAILURE);
     }
-
-    close(SocketFD);
-    return EXIT_SUCCESS;
+    usleep(100000);
+    if (write(SocketFD, topic.c_str(), topic.length()) <= 0) {
+        perror("Error sending topic");
+        close(SocketFD);
+        exit(EXIT_FAILURE);
+    }
+    usleep(100000);
+    if (write(SocketFD, message.c_str(), message.length()) <= 0) {
+        perror("Error sending message");
+        close(SocketFD);
+        exit(EXIT_FAILURE);
+    }
+    return true;
 }

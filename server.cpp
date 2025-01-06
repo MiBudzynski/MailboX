@@ -48,6 +48,7 @@ void loguj(string &option, string &login, string &password, int newSocket) {
 }
 
 void *socketThread(void *arg) {
+    //Acceptowanie nowego uzytkownika
     int newSocket = *((int *)arg);
     string option, login, password;
     do{
@@ -63,6 +64,17 @@ void *socketThread(void *arg) {
     }while(1);
     if (write(newSocket, "Accept", 7) < 0){
         perror("Error writing to socket");
+    }
+
+    // Wysylanie aktualnie dostepnych wiadomosci
+    vector<tuple<string, string>> topics = getTopics(login); 
+    for (const auto& [sender, topic] : topics) {
+        string mess = "Od: " + sender + "\nTemat: " + topic;
+        if (write(newSocket, mess.c_str(), mess.length()) <= 0)
+            cerr << "Error while sending topics to client\n";
+    }
+    if (write(newSocket, "Brak nowych wiadomosci", 23) <= 0) {
+        cerr << "Error writing to socket";
     }
 
     //pętla do dalszej komunikacji
