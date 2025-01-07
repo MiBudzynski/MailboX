@@ -21,14 +21,14 @@ void * recvThread(void *arg)
 {
     char buff_rcv[256];
     memset(buff_rcv, 0, sizeof(buff_rcv));
-    int SocketFD = *((int *)arg);
+    int threatSocketFD = *((int *)arg);
     while(true){
-        if (read(SocketFD, buff_rcv, sizeof buff_rcv ) <= 0) {
+        if (read(threatSocketFD, buff_rcv, sizeof buff_rcv ) <= 0) {
             perror("Error receiving response");
             break;
         }
         string message(buff_rcv);
-        cout << "Server response: " << buff_rcv << endl;
+        cout << "message from serrver: " << buff_rcv << endl;
         if (updateGuiCallback) {
             updateGuiCallback(message);
         }
@@ -85,20 +85,6 @@ bool log(const string &username, const string &password, const string &option){
     }
     cout << "^^^^^^^^^^^^^^^" << rcv << endl;
     if(strcmp(rcv, "Accept") != 0) return false;
-
-    //odbieranie listy wiadomosci
-    /*while(1){
-        char buff[256];
-        memset(buff, 0, sizeof(buff));
-        if (read(SocketFD, buff, sizeof(buff)) <= 0){
-            perror("Error receiving response");
-            break;
-        }else{
-            //wysylanie do GUI;
-        }
-        if(strcmp(buff, "Brak nowych wiadomosci") == 0)
-            break;
-    }*/
 
     //tworzenie watku do odbioru nowych wiadomosci
     pthread_t thread_id;

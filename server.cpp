@@ -69,30 +69,38 @@ void *socketThread(void *arg) {
     // Wysylanie aktualnie dostepnych wiadomosci
     vector<tuple<string, string>> topics = getTopics(login); 
     for (const auto& [sender, topic] : topics) {
-        string mess = "Od: " + sender + "\nTemat: " + topic;
+        string mess = "Od: " + sender + "\nTemat: " + topic + "\n";
+        cout << "message to  client: " << mess << endl;
         if (write(newSocket, mess.c_str(), mess.length()) <= 0)
             cerr << "Error while sending topics to client\n";
     }
-    if (write(newSocket, "Brak nowych wiadomosci", 23) <= 0) {
+    if (write(newSocket, "test", 5) <= 0) {
         cerr << "Error writing to socket";
     }
 
     //pętla do dalszej komunikacji
     while(true){
-        char buff[256];
-        memset(buff, 0, sizeof(buff));
+        char receiver[256], subject[256], content[1000];
+        memset(receiver, 0, sizeof(receiver));
+        memset(subject, 0, sizeof(subject));
+        memset(content, 0, sizeof(content));
 
-        if (read(newSocket, buff, sizeof(buff)) <= 0) {
+        if (read(newSocket, receiver, sizeof(receiver)) <= 0) {
             cerr << "Client disconnected or error reading\n";
             break;
         }
-        cout << "Received message: " << buff << std::endl;
-
-        // Wysyłanie odpowiedzi klientowi
-        if (write(newSocket, "Message received\n", 16) <= 0) {
-            cerr << "Error writing to client\n";
+        cout << "Received reciver: " << receiver << std::endl;
+        if (read(newSocket, subject, sizeof(subject)) <= 0) {
+            cerr << "Client disconnected or error reading\n";
             break;
         }
+        cout << "Received topic: " << subject << std::endl;
+        if (read(newSocket, content, sizeof(content)) <= 0) {
+            cerr << "Client disconnected or error reading\n";
+            break;
+        }
+        cout << "Received message: " << content << std::endl;
+        addMessage(login, receiver, subject, content);
     }
     close(newSocket);
     pthread_exit(NULL);

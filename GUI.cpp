@@ -26,7 +26,7 @@ void showMessageInterface(QWidget* window) {
 
     QTextEdit *MessagesField = new QTextEdit;
     MessagesField->setReadOnly(true);
-    MessagesField->setPlaceholderText("Odebrane wiadomości...");
+    MessagesField->setPlaceholderText("Brak nowych wiadomosci");
 
     QVBoxLayout *layout = new QVBoxLayout;
     layout->addWidget(sendButton);
@@ -35,6 +35,7 @@ void showMessageInterface(QWidget* window) {
 
     // Przypisanie callbacka do aktualizacji pola z wiadomościami
     updateGuiCallback = [MessagesField](const std::string &message) {
+        cout << "Callback received message: " << message << endl;
         QString currentText = MessagesField->toPlainText();
         MessagesField->setText(currentText + "\n" + QString::fromStdString(message));
     };
@@ -75,8 +76,9 @@ void showSendInterface(QWidget* window) {
     layout->setContentsMargins(20, 20, 20, 20);
     sendWindow->setLayout(layout);
 
-    QObject::connect(sendButton, &QPushButton::clicked, [sendWindow]() {
-        send();
+    QObject::connect(sendButton, &QPushButton::clicked, [=]() {
+        send(reciverField->text().toStdString(), topicField->text().toStdString(), messageField->toPlainText().toStdString());
+        showMessageInterface(sendWindow);
     });
 
     QObject::connect(backButton, &QPushButton::clicked, [sendWindow]() {

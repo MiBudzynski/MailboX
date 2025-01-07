@@ -4,10 +4,12 @@
 #include <string>
 #include <functional>
 
-extern std::function<void(const std::string&)> updateGuiCallback;
+using namespace std;
+
+extern function<void(const string&)> updateGuiCallback;
 
 bool connect();
-bool log(const std::string &username, const std::string &password, const std::string &option);
+bool log(const string &username, const string &password, const string &option);
 bool send(const string &reciver, const string &topic, const string &message);
 
 #endif // CLIENT_H
