@@ -152,7 +152,10 @@ string getMessage(const string &sender, const string &receiver, const string &to
     sqlite3_bind_text(stmt, 2, receiver.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 3, topic.c_str(), -1, SQLITE_STATIC);
 
-    string message = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+    string message;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        message = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+    }
 
     sqlite3_finalize(stmt);
     sqlite3_close(db);

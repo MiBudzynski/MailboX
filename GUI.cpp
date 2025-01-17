@@ -34,7 +34,7 @@ void showMessagesInterface(QWidget* window) {
     // Dodanie listy wiadomości jako przycisków
     QVBoxLayout *messageListLayout = new QVBoxLayout;
     for (const auto& [sender, topic] : messages) {
-        QString buttonText = QString("%1 %2").arg(QString::fromStdString(sender)).arg(QString::fromStdString(topic));
+        QString buttonText = QString("Od: %1\nTemat: %2").arg(QString::fromStdString(sender)).arg(QString::fromStdString(topic));
         QPushButton *messageButton = new QPushButton(buttonText);
         messageButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
@@ -116,19 +116,16 @@ void showMessageInterface(QWidget* window, string sender, string topic){
     messageWindow->resize(1920, 1080);
 
     QPushButton *backButton = new QPushButton("Wroc do skrzynki odbiorczej");
-    QLabel *senderLabel = new QLabel(QString("%1").arg(QString::fromStdString(sender)));
-    QLabel *topicLabel = new QLabel(QString("%1").arg(QString::fromStdString(topic)));
+    QLabel *senderLabel = new QLabel(QString("Od: %1").arg(QString::fromStdString(sender)));
+    QLabel *topicLabel = new QLabel(QString("Temat: %1").arg(QString::fromStdString(topic)));
     QString messageContent = QString::fromStdString(getMessage(sender, topic));
     QTextEdit *messageText = new QTextEdit(messageContent);
     messageText->setReadOnly(true);
-    QPushButton *closeButton = new QPushButton("Zamknij");
-    QObject::connect(closeButton, &QPushButton::clicked, [messageWindow]() {messageWindow->close();});
 
     QVBoxLayout *layout = new QVBoxLayout;
     layout->addWidget(senderLabel);
     layout->addWidget(topicLabel);
     layout->addWidget(messageText);
-    layout->addWidget(closeButton);
     layout->addWidget(backButton);
     messageWindow->setLayout(layout);
 

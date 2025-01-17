@@ -65,7 +65,8 @@
         "variant": "cpp",
         "qmessagebox": "cpp",
         "qtextedit": "cpp",
-        "qpushbutton": "cpp"
+        "qpushbutton": "cpp",
+        "qapplication": "cpp"
     },
     "makefile.configureOnOpen": true
 }

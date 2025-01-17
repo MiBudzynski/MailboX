@@ -78,7 +78,7 @@ void *socketThread(void *arg) {
             // Wysylanie aktualnie dostepnych wiadomosci
             vector<tuple<string, string>> topics = getTopics(login); 
             for (const auto& [sender, topic] : topics) {
-                string mess = "Od: " + sender + "\nTemat: " + topic + "\n";
+                string mess = sender + ":" + topic;
                 cout << "message to  client: \n" << mess << endl;
                 if (write(newSocket, mess.c_str(), mess.length()) <= 0)
                     cerr << "Error while sending topics to client\n";
@@ -95,8 +95,7 @@ void *socketThread(void *arg) {
                 cerr << "Client disconnected or error reading\n";
             if (read(newSocket, topic, sizeof(topic)) <= 0)
                 cerr << "Client disconnected or error reading\n";
-
-            string mess = getMessage(string(sender), login, string(topic)); 
+            string mess = getMessage(sender, login, topic); 
             cout << "message to  client: " << mess << endl;
             if (write(newSocket, mess.c_str(), mess.length()) <= 0)
                 cerr << "Error while sending message to client\n";

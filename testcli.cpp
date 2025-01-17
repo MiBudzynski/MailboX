@@ -1,106 +1,43 @@
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <iostream>
-#include <string>
-#include <cstring>
-#include <unistd.h>
-#include <pthread.h>
-#include <functional>
-#include <QApplication>
-#include <QPushButton>
-#include <QVBoxLayout>
-#include <QWidget>
-#include <QString>
-#include <QMetaObject>
-#include <QMessageBox>
+#include <sqlite3.h>
 
-using namespace std;
-
-struct sockaddr_in sa;
-int SocketFD;
-
-function<void(const std::string&)> updateGuiCallback;
-
-void *recvThread(void *arg) {
-    char buff_rcv[256];
-    memset(buff_rcv, 0, sizeof(buff_rcv));
-    int threadSocketFD = *((int *)arg);
-    while (true) {
-        if (read(threadSocketFD, buff_rcv, sizeof buff_rcv) <= 0) {
-            perror("Error receiving response");
-            break;
-        }
-        string message(buff_rcv);
-        cout << "Message from server: " << buff_rcv << endl;
-        if (updateGuiCallback) {
-            updateGuiCallback(message);
-        }
+void checkMessages(const std::string& sender, const std::string& receiver, const std::string& topic) {
+    sqlite3 *db;
+    if (sqlite3_open("MailBase.db", &db)) {
+        return;
     }
-    pthread_exit(NULL);
+
+    const char *selectSQL = "SELECT Message FROM Messages WHERE Sender = ? and Receiver = ? and Topic = ?;";
+    sqlite3_stmt *stmt;
+    if (sqlite3_prepare_v2(db, selectSQL, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_close(db);
+        return;
+    }
+
+    sqlite3_bind_text(stmt, 1, sender.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, receiver.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, topic.c_str(), -1, SQLITE_STATIC);
+
+    std::string message;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        message = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+    }
+    std::cout << "Message: " << message << std::endl;
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
 }
 
-int main(int argc, char *argv[]) {
-    memset(&sa, 0, sizeof sa);
-    int port = 1100;
-    sa.sin_family = AF_INET;
-    sa.sin_port = htons(port);
-    sa.sin_addr.s_addr = inet_addr("127.0.0.1");
+int main() {
+    std::string sender, receiver, topic;
+    std::cout << "Podaj Sender: ";
+    std::getline(std::cin, sender);
+    std::cout << "Podaj Receiver: ";
+    std::getline(std::cin, receiver);
+    std::cout << "Podaj Topic: ";
+    std::getline(std::cin, topic);
 
-    SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (SocketFD == -1) {
-        perror("Cannot create socket");
-        return 1;
-    }
-    if (connect(SocketFD, (struct sockaddr *)&sa, sizeof sa) == -1) {
-        perror("Connect failed");
-        close(SocketFD);
-        return 1;
-    }
+    checkMessages(sender, receiver, topic);
 
-    cout << "Connection accepted" << endl;
-
-    pthread_t thread_id;
-    if (pthread_create(&thread_id, NULL, recvThread, &SocketFD) != 0) {
-        cerr << "Failed to create thread\n";
-        close(SocketFD);
-        return 1;
-    }
-    pthread_detach(thread_id);
-
-    QApplication app(argc, argv);
-
-    QWidget *messageWindow = new QWidget;
-    messageWindow->setWindowTitle("SuperEkstraMail - Wiadomości");
-    messageWindow->resize(800, 600);
-
-    QVBoxLayout *layout = new QVBoxLayout;
-
-    // Callback do aktualizacji GUI
-    updateGuiCallback = [layout](const std::string &message) {
-        QMetaObject::invokeMethod(layout, [layout, message]() {
-            QPushButton *messageButton = new QPushButton(QString::fromStdString(message));
-            QObject::connect(messageButton, &QPushButton::clicked, [message]() {
-                QMessageBox::information(nullptr, "Wiadomość", QString::fromStdString(message));
-            });
-            layout->addWidget(messageButton);
-        });
-    };
-
-    QPushButton *sendButton = new QPushButton("Napisz wiadomość");
-    layout->addWidget(sendButton);
-    QObject::connect(sendButton, &QPushButton::clicked, []() {
-        QMessageBox::information(nullptr, "Informacja", "Przycisk jeszcze nie obsługiwany!");
-    });
-
-    messageWindow->setLayout(layout);
-
-    QObject::connect(&app, &QApplication::aboutToQuit, []() {
-        close(SocketFD);
-    });
-
-    messageWindow->show();
-
-    return app.exec();
+    return 0;
 }

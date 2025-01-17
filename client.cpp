@@ -131,6 +131,7 @@ string getMessage(const string &sender, const string &topic)
         close(SocketFD);
         exit(EXIT_FAILURE);
     }
+    usleep(100000);
     if (write(SocketFD, sender.c_str(), sender.length()) <= 0) {
         perror("Error sending sender");
         close(SocketFD);
@@ -142,8 +143,7 @@ string getMessage(const string &sender, const string &topic)
         close(SocketFD);
         exit(EXIT_FAILURE);
     }
-    usleep(100000);
-    char rcv[256];
+    char rcv[1000];
     memset(rcv, 0, sizeof(rcv));
     if (read(SocketFD, rcv, sizeof rcv ) <= 0) {
         perror("Error receiving response");
