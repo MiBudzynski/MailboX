@@ -9,6 +9,8 @@
 #include <QTextEdit>
 #include <QFont>
 #include <QFontDatabase>
+#include <QMetaObject>
+#include <QScrollArea>
 #include <thread>
 #include <iostream>
 #include "client.h"
@@ -16,29 +18,48 @@
 using namespace std;
 
 void showSendInterface(QWidget* window);
+void showMessageInterface(QWidget* window, string sender, string topic);
 
-void showMessageInterface(QWidget* window) {
+void showMessagesInterface(QWidget* window) {
     QWidget *messageWindow = new QWidget;
     messageWindow->setWindowTitle("SuperEkstraMail - Wiadomości");
     messageWindow->resize(1920, 1080);
 
-    QPushButton *sendButton = new QPushButton("Napisz wiadomosc");
-
-    QTextEdit *MessagesField = new QTextEdit;
-    MessagesField->setReadOnly(true);
-    MessagesField->setPlaceholderText("Brak nowych wiadomosci");
-
+    QPushButton *sendButton = new QPushButton("Napisz wiadomość");
     QVBoxLayout *layout = new QVBoxLayout;
-    layout->addWidget(sendButton);
-    layout->addWidget(MessagesField);
-    messageWindow->setLayout(layout);
 
-    // Przypisanie callbacka do aktualizacji pola z wiadomościami
-    updateGuiCallback = [MessagesField](const std::string &message) {
-        cout << "Callback received message: " << message << endl;
-        QString currentText = MessagesField->toPlainText();
-        MessagesField->setText(currentText + "\n" + QString::fromStdString(message));
-    };
+    // Pobranie wiadomości z serwera
+    vector<tuple<string, string>> messages = getMessages();
+
+    // Dodanie listy wiadomości jako przycisków
+    QVBoxLayout *messageListLayout = new QVBoxLayout;
+    for (const auto& [sender, topic] : messages) {
+        QString buttonText = QString("%1 %2").arg(QString::fromStdString(sender)).arg(QString::fromStdString(topic));
+        QPushButton *messageButton = new QPushButton(buttonText);
+        messageButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+
+        // Ustawienie stylu dla zawijania tekstu
+        messageButton->setStyleSheet("QPushButton { text-align: left; padding: 10px; }");
+
+        // Obsługa kliknięcia na przycisk wiadomości
+        QObject::connect(messageButton, &QPushButton::clicked, [messageWindow, sender, topic]() {
+            showMessageInterface(messageWindow, sender, topic);
+        });
+
+        messageListLayout->addWidget(messageButton);
+    }
+
+    QWidget *messageListWidget = new QWidget;
+    messageListWidget->setLayout(messageListLayout);
+
+    // Kontener dla listy wiadomości i przycisku
+    QScrollArea *scrollArea = new QScrollArea;
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setWidget(messageListWidget);
+
+    layout->addWidget(sendButton);
+    layout->addWidget(scrollArea);
+    messageWindow->setLayout(layout);
 
     QObject::connect(sendButton, &QPushButton::clicked, [messageWindow]() {
         showSendInterface(messageWindow);
@@ -78,15 +99,49 @@ void showSendInterface(QWidget* window) {
 
     QObject::connect(sendButton, &QPushButton::clicked, [=]() {
         send(reciverField->text().toStdString(), topicField->text().toStdString(), messageField->toPlainText().toStdString());
-        showMessageInterface(sendWindow);
+        showMessagesInterface(sendWindow);
     });
 
     QObject::connect(backButton, &QPushButton::clicked, [sendWindow]() {
-        showMessageInterface(sendWindow);
+        showMessagesInterface(sendWindow);
     });
 
     sendWindow->show();
     window->close();
+}
+
+void showMessageInterface(QWidget* window, string sender, string topic){
+    QWidget *messageWindow = new QWidget;
+    messageWindow->setWindowTitle(QString("Wiadomość od: %1").arg(QString::fromStdString(sender)));
+    messageWindow->resize(1920, 1080);
+
+    QPushButton *backButton = new QPushButton("Wroc do skrzynki odbiorczej");
+    QLabel *senderLabel = new QLabel(QString("%1").arg(QString::fromStdString(sender)));
+    QLabel *topicLabel = new QLabel(QString("%1").arg(QString::fromStdString(topic)));
+    QString messageContent = QString::fromStdString(getMessage(sender, topic));
+    QTextEdit *messageText = new QTextEdit(messageContent);
+    messageText->setReadOnly(true);
+    QPushButton *closeButton = new QPushButton("Zamknij");
+    QObject::connect(closeButton, &QPushButton::clicked, [messageWindow]() {messageWindow->close();});
+
+    QVBoxLayout *layout = new QVBoxLayout;
+    layout->addWidget(senderLabel);
+    layout->addWidget(topicLabel);
+    layout->addWidget(messageText);
+    layout->addWidget(closeButton);
+    layout->addWidget(backButton);
+    messageWindow->setLayout(layout);
+
+    QObject::connect(backButton, &QPushButton::clicked, [messageWindow]() {
+        showMessagesInterface(messageWindow);
+    });
+
+    messageWindow->show();
+    window->close();
+}
+
+void showMessageInterface(QWidget* window) {
+    showMessagesInterface(window); // Domyślne przejście do skrzynki odbiorczej
 }
 
 void handleLog(QLineEdit* usernameField, QLineEdit* passwordField, QLabel* statusLabel, string option, QWidget* window) {
@@ -97,7 +152,7 @@ void handleLog(QLineEdit* usernameField, QLineEdit* passwordField, QLabel* statu
         cout << "_____________________ udalo: " << endl;
         statusLabel->setText("Status: Zalogowany");
         QMessageBox::information(nullptr, "Sukces", "Zalogowano pomyślnie!");
-        showMessageInterface(window);
+        showMessagesInterface(window);
     } else if(option == "zaloguj"){
         cout << "_________________ dupa: " << endl;
         QMessageBox::critical(nullptr, "Błąd", "Niepoprawny login lub hasło.");

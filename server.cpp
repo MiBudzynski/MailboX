@@ -66,41 +66,66 @@ void *socketThread(void *arg) {
         perror("Error writing to socket");
     }
 
-    // Wysylanie aktualnie dostepnych wiadomosci
-    vector<tuple<string, string>> topics = getTopics(login); 
-    for (const auto& [sender, topic] : topics) {
-        string mess = "Od: " + sender + "\nTemat: " + topic + "\n";
-        cout << "message to  client: " << mess << endl;
-        if (write(newSocket, mess.c_str(), mess.length()) <= 0)
-            cerr << "Error while sending topics to client\n";
-    }
-    if (write(newSocket, "test", 5) <= 0) {
-        cerr << "Error writing to socket";
-    }
-
-    //pętla do dalszej komunikacji
     while(true){
-        char receiver[256], subject[256], content[1000];
-        memset(receiver, 0, sizeof(receiver));
-        memset(subject, 0, sizeof(subject));
-        memset(content, 0, sizeof(content));
+        char action[256];
+        memset(action, 0, sizeof(action));
+        if (read(newSocket, action, sizeof(action)) <= 0) {
+            cerr << "Client disconnected or error reading\n";
+            break;
+        }
 
-        if (read(newSocket, receiver, sizeof(receiver)) <= 0) {
-            cerr << "Client disconnected or error reading\n";
-            break;
+        if(strcmp(action, "getMessages") == 0){
+            // Wysylanie aktualnie dostepnych wiadomosci
+            vector<tuple<string, string>> topics = getTopics(login); 
+            for (const auto& [sender, topic] : topics) {
+                string mess = "Od: " + sender + "\nTemat: " + topic + "\n";
+                cout << "message to  client: \n" << mess << endl;
+                if (write(newSocket, mess.c_str(), mess.length()) <= 0)
+                    cerr << "Error while sending topics to client\n";
+                usleep(100000);
+            }
+            if (write(newSocket, "End", 4) <= 0)
+                cerr << "Error while sending end of sending\n";
+        }else if(strcmp(action, "getMessage") == 0){
+            // Wysylanie wiadomosci
+            char sender[256], topic[256];
+            memset(sender, 0, sizeof(sender));
+            memset(topic, 0, sizeof(topic));
+            if (read(newSocket, sender, sizeof(sender)) <= 0)
+                cerr << "Client disconnected or error reading\n";
+            if (read(newSocket, topic, sizeof(topic)) <= 0)
+                cerr << "Client disconnected or error reading\n";
+
+            string mess = getMessage(string(sender), login, string(topic)); 
+            cout << "message to  client: " << mess << endl;
+            if (write(newSocket, mess.c_str(), mess.length()) <= 0)
+                cerr << "Error while sending message to client\n";
+        }else if(strcmp(action, "sendMessage") == 0){
+            // odbieranie wiadomosci
+            char receiver[256], subject[256], content[1000];
+            memset(receiver, 0, sizeof(receiver));
+            memset(subject, 0, sizeof(subject));
+            memset(content, 0, sizeof(content));
+
+            if (read(newSocket, receiver, sizeof(receiver)) <= 0) {
+                cerr << "Client disconnected or error reading\n";
+                break;
+            }
+            cout << "Received reciver: " << receiver << std::endl;
+            if (read(newSocket, subject, sizeof(subject)) <= 0) {
+                cerr << "Client disconnected or error reading\n";
+                break;
+            }
+            cout << "Received topic: " << subject << std::endl;
+            if (read(newSocket, content, sizeof(content)) <= 0) {
+                cerr << "Client disconnected or error reading\n";
+                break;
+            }
+            cout << "Received message: " << content << std::endl;
+            addMessage(login, receiver, subject, content);
+        }else{
+             cerr << "Unknown acction\n";
         }
-        cout << "Received reciver: " << receiver << std::endl;
-        if (read(newSocket, subject, sizeof(subject)) <= 0) {
-            cerr << "Client disconnected or error reading\n";
-            break;
-        }
-        cout << "Received topic: " << subject << std::endl;
-        if (read(newSocket, content, sizeof(content)) <= 0) {
-            cerr << "Client disconnected or error reading\n";
-            break;
-        }
-        cout << "Received message: " << content << std::endl;
-        addMessage(login, receiver, subject, content);
     }
     close(newSocket);
     pthread_exit(NULL);

@@ -6,10 +6,10 @@
 
 using namespace std;
 
-extern function<void(const string&)> updateGuiCallback;
-
 bool connect();
 bool log(const string &username, const string &password, const string &option);
 bool send(const string &reciver, const string &topic, const string &message);
+vector<tuple<string, string>> getMessages();
+string getMessage(const string &reciver, const string &topic);
 
 #endif // CLIENT_H

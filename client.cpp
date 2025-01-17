@@ -15,27 +15,6 @@ using namespace std;
 struct sockaddr_in sa;
 int SocketFD;
 
-function<void(const std::string&)> updateGuiCallback;
-
-void * recvThread(void *arg)
-{
-    char buff_rcv[256];
-    memset(buff_rcv, 0, sizeof(buff_rcv));
-    int threatSocketFD = *((int *)arg);
-    while(true){
-        if (read(threatSocketFD, buff_rcv, sizeof buff_rcv ) <= 0) {
-            perror("Error receiving response");
-            break;
-        }
-        string message(buff_rcv);
-        cout << "message from serrver: " << buff_rcv << endl;
-        if (updateGuiCallback) {
-            updateGuiCallback(message);
-        }
-    }
-    pthread_exit(NULL);
-}
-
 bool connect(){
     memset(&sa, 0, sizeof sa);
     int port = 1100;
@@ -85,19 +64,16 @@ bool log(const string &username, const string &password, const string &option){
     }
     cout << "^^^^^^^^^^^^^^^" << rcv << endl;
     if(strcmp(rcv, "Accept") != 0) return false;
-
-    //tworzenie watku do odbioru nowych wiadomosci
-    pthread_t thread_id;
-    updateGuiCallback = nullptr;
-    if( pthread_create(&thread_id, NULL, recvThread, &SocketFD) != 0 )
-        printf("Failed to create thread\n");
-    pthread_detach(thread_id);
-
     return true;
 }
 
 bool send(const string &reciver, const string &topic, const string &message){
-    //przesylanie danych wiadomosci
+    if (write(SocketFD, "sendMessage", 12) <= 0) {
+        perror("Error sending acction");
+        close(SocketFD);
+        exit(EXIT_FAILURE);
+    }
+    usleep(100000);
     if (write(SocketFD, reciver.c_str(), reciver.length()) <= 0) {
         perror("Error sending reciver");
         close(SocketFD);
@@ -116,4 +92,61 @@ bool send(const string &reciver, const string &topic, const string &message){
         exit(EXIT_FAILURE);
     }
     return true;
+}
+
+vector<tuple<string, string>> getMessages()
+{
+    if (write(SocketFD, "getMessages", 12) <= 0) {
+        perror("Error sending acction");
+        close(SocketFD);
+        exit(EXIT_FAILURE);
+    }
+    vector<tuple<string, string>> messages;
+    char rcv[256];
+    while(true){
+        memset(rcv, 0, sizeof(rcv));
+        if (read(SocketFD, rcv, sizeof rcv ) <= 0) {
+            perror("Error receiving response");
+            break;
+        }
+        if(strcmp(rcv, "End") == 0){
+            break;
+        }
+        // Parsowanie odebranych danych, zakładam format "sender:topic"
+        string received(rcv);
+        size_t delimiterPos = received.find(':');
+        if (delimiterPos != string::npos) {
+            string sender = received.substr(0, delimiterPos);
+            string topic = received.substr(delimiterPos + 1);
+            messages.emplace_back(sender, topic);
+        }
+    }
+    return messages;
+}
+
+string getMessage(const string &sender, const string &topic)
+{
+    if (write(SocketFD, "getMessage", 11) <= 0) {
+        perror("Error sending acction");
+        close(SocketFD);
+        exit(EXIT_FAILURE);
+    }
+    if (write(SocketFD, sender.c_str(), sender.length()) <= 0) {
+        perror("Error sending sender");
+        close(SocketFD);
+        exit(EXIT_FAILURE);
+    }
+    usleep(100000);
+    if (write(SocketFD, topic.c_str(), topic.length()) <= 0) {
+        perror("Error sending topic");
+        close(SocketFD);
+        exit(EXIT_FAILURE);
+    }
+    usleep(100000);
+    char rcv[256];
+    memset(rcv, 0, sizeof(rcv));
+    if (read(SocketFD, rcv, sizeof rcv ) <= 0) {
+        perror("Error receiving response");
+    }
+    return rcv;
 }
