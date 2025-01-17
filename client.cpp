@@ -96,6 +96,7 @@ bool send(const string &reciver, const string &topic, const string &message){
 
 vector<tuple<string, string>> getMessages()
 {
+    usleep(100000);
     if (write(SocketFD, "getMessages", 12) <= 0) {
         perror("Error sending acction");
         close(SocketFD);
