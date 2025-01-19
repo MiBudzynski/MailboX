@@ -32,6 +32,11 @@ bool connect(){
         close(SocketFD);
         return false;
     }
+    if (write(SocketFD, "client", 7) <= 0) {
+        perror("Error sending connection information");
+        close(SocketFD);
+        exit(EXIT_FAILURE);
+    }
 
     cout << "Connection accepted" << endl;
     return true;

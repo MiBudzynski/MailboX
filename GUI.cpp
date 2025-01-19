@@ -26,6 +26,7 @@ void showMessagesInterface(QWidget* window) {
     messageWindow->resize(1920, 1080);
 
     QPushButton *sendButton = new QPushButton("Napisz wiadomość");
+    QPushButton *refreshButton = new QPushButton("Odświez");
     QVBoxLayout *layout = new QVBoxLayout;
 
     // Pobranie wiadomości z serwera
@@ -58,11 +59,17 @@ void showMessagesInterface(QWidget* window) {
     scrollArea->setWidget(messageListWidget);
 
     layout->addWidget(sendButton);
+    layout->addWidget(refreshButton);
     layout->addWidget(scrollArea);
     messageWindow->setLayout(layout);
 
     QObject::connect(sendButton, &QPushButton::clicked, [messageWindow]() {
         showSendInterface(messageWindow);
+    });
+
+
+    QObject::connect(refreshButton, &QPushButton::clicked, [messageWindow]() {
+        showMessagesInterface(messageWindow);
     });
 
     messageWindow->show();
@@ -151,10 +158,10 @@ void handleLog(QLineEdit* usernameField, QLineEdit* passwordField, QLabel* statu
         QMessageBox::information(nullptr, "Sukces", "Zalogowano pomyślnie!");
         showMessagesInterface(window);
     } else if(option == "zaloguj"){
-        cout << "_________________ dupa: " << endl;
+        cout << "_________________ niezalogowano: " << endl;
         QMessageBox::critical(nullptr, "Błąd", "Niepoprawny login lub hasło.");
     } else{
-        cout << "_________________ dupa: " << endl;
+        cout << "_________________ niezalogowano: " << endl;
         QMessageBox::critical(nullptr, "Błąd", "Nazwa uzytkownika juz zajeta");
     }
 }

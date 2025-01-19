@@ -13,6 +13,55 @@
 
 using namespace std;
 
+void handleIncomingConnections(int server_socket) {
+    while (true) {
+        char buff[1024];
+        memset(buff, 0, sizeof(buff));
+        if (read(server_socket, buff, sizeof(buff)) <= 0)
+            cerr << "Client disconnected or error reading\n";
+        cout << "Message received: " << buff << endl;
+    }
+    close(server_socket);
+    pthread_exit(NULL);
+}
+
+void connectToOtherServers(const vector<string>& ips) {
+    for (const auto& ip : ips) {
+        int client_socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (client_socket < 0) {
+            cerr << "Error creating socket for " << ip << endl;
+            continue;
+        }
+
+        struct sockaddr_in server_addr;
+        memset(&server_addr, 0, sizeof(server_addr));
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(1100);
+
+        if (inet_pton(AF_INET, ip.c_str(), &server_addr.sin_addr) <= 0) {
+            cerr << "Invalid IP address: " << ip << endl;
+            close(client_socket);
+            continue;
+        }
+
+        if (connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+            cerr << "Could not connect to " << ip << endl;
+            close(client_socket);
+            continue;
+        }
+
+        if (write(client_socket, "server", 7) <= 0) {
+            cout << "Error sending connection information";
+        }
+        if (write(client_socket, "heeeey", 7) <= 0) {
+            cout << "Error sending connection information";
+        }
+        cout << "Connected and sent message to " << ip << endl;
+
+        close(client_socket);
+    }
+}
+
 void loguj(string &option, string &login, string &password, int newSocket) {
     char optionBuffer[256], loginBuffer[256], passwordBuffer[256];
     memset(loginBuffer, 0, 256);
@@ -50,6 +99,12 @@ void loguj(string &option, string &login, string &password, int newSocket) {
 void *socketThread(void *arg) {
     //Acceptowanie nowego uzytkownika
     int newSocket = *((int *)arg);
+    char buff[7];
+    if (read(newSocket, buff, sizeof(buff)) <= 0)
+        cerr << "Client disconnected or error reading\n";
+    if (strcmp(buff, "client") != 0){
+        handleIncomingConnections(newSocket);
+    }else{
     string option, login, password;
     do{
         loguj(option, login, password, newSocket);
@@ -110,24 +165,24 @@ void *socketThread(void *arg) {
                 cerr << "Client disconnected or error reading\n";
                 break;
             }
-            cout << "Received reciver: " << receiver << std::endl;
+            cout << "Received reciver: " << receiver << endl;
             if (read(newSocket, subject, sizeof(subject)) <= 0) {
                 cerr << "Client disconnected or error reading\n";
                 break;
             }
-            cout << "Received topic: " << subject << std::endl;
+            cout << "Received topic: " << subject << endl;
             if (read(newSocket, content, sizeof(content)) <= 0) {
                 cerr << "Client disconnected or error reading\n";
                 break;
             }
-            cout << "Received message: " << content << std::endl;
+            cout << "Received message: " << content << endl;
             addMessage(login, receiver, subject, content);
         }else{
              cerr << "Unknown acction\n";
         }
     }
     close(newSocket);
-    pthread_exit(NULL);
+    pthread_exit(NULL);}
 }
 
 int main() {
@@ -161,6 +216,9 @@ int main() {
     if(create() == -1){
         cerr << "Error creating Database";
     }
+
+    vector<string> ips = {"10.0.2.15"};
+    connectToOtherServers(ips);
 
     pthread_t thread_id;
     // Pętla do dalszej komunikacji
