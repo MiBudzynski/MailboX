@@ -13,23 +13,11 @@
 
 using namespace std;
 
-void handleIncomingConnections(int server_socket) {
-    while (true) {
-        char buff[1024];
-        memset(buff, 0, sizeof(buff));
-        if (read(server_socket, buff, sizeof(buff)) <= 0)
-            cerr << "Client disconnected or error reading\n";
-        cout << "Message received: " << buff << endl;
-    }
-    close(server_socket);
-    pthread_exit(NULL);
-}
-
-void connectToOtherServers(const vector<string>& ips) {
+void connectToOtherServers(const std::vector<std::string>& ips) {
     for (const auto& ip : ips) {
         int client_socket = socket(AF_INET, SOCK_STREAM, 0);
         if (client_socket < 0) {
-            cerr << "Error creating socket for " << ip << endl;
+            std::cerr << "Error creating socket for " << ip << std::endl;
             continue;
         }
 
@@ -39,24 +27,20 @@ void connectToOtherServers(const vector<string>& ips) {
         server_addr.sin_port = htons(1100);
 
         if (inet_pton(AF_INET, ip.c_str(), &server_addr.sin_addr) <= 0) {
-            cerr << "Invalid IP address: " << ip << endl;
+            std::cerr << "Invalid IP address: " << ip << std::endl;
             close(client_socket);
             continue;
         }
 
         if (connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-            cerr << "Could not connect to " << ip << endl;
+            std::cerr << "Could not connect to " << ip << std::endl;
             close(client_socket);
             continue;
         }
 
-        if (write(client_socket, "server", 7) <= 0) {
-            cout << "Error sending connection information";
-        }
-        if (write(client_socket, "heeeey", 7) <= 0) {
-            cout << "Error sending connection information";
-        }
-        cout << "Connected and sent message to " << ip << endl;
+        const char* message = "server";
+        send(client_socket, message, strlen(message), 0);
+        std::cout << "Connected and sent message to " << ip << std::endl;
 
         close(client_socket);
     }
@@ -96,15 +80,7 @@ void loguj(string &option, string &login, string &password, int newSocket) {
     cout << "Received password: " << password << endl;
 }
 
-void *socketThread(void *arg) {
-    //Acceptowanie nowego uzytkownika
-    int newSocket = *((int *)arg);
-    char buff[7];
-    if (read(newSocket, buff, sizeof(buff)) <= 0)
-        cerr << "Client disconnected or error reading\n";
-    if (strcmp(buff, "client") != 0){
-        handleIncomingConnections(newSocket);
-    }else{
+void clients(int newSocket){
     string option, login, password;
     do{
         loguj(option, login, password, newSocket);
@@ -165,24 +141,41 @@ void *socketThread(void *arg) {
                 cerr << "Client disconnected or error reading\n";
                 break;
             }
-            cout << "Received reciver: " << receiver << endl;
+            cout << "Received reciver: " << receiver << std::endl;
             if (read(newSocket, subject, sizeof(subject)) <= 0) {
                 cerr << "Client disconnected or error reading\n";
                 break;
             }
-            cout << "Received topic: " << subject << endl;
+            cout << "Received topic: " << subject << std::endl;
             if (read(newSocket, content, sizeof(content)) <= 0) {
                 cerr << "Client disconnected or error reading\n";
                 break;
             }
-            cout << "Received message: " << content << endl;
+            cout << "Received message: " << content << std::endl;
             addMessage(login, receiver, subject, content);
         }else{
              cerr << "Unknown acction\n";
         }
     }
+}
+
+void servers(int newSocket){
+    cout << "Im am in other server " << endl;
+}
+
+void *socketThread(void *arg) {
+    //Acceptowanie nowego uzytkownika
+    int newSocket = *((int *)arg);
+    char buff[7];
+    memset(buff, 0, sizeof(buff));
+    if (read(newSocket, buff, sizeof(buff)) <= 0) {
+        cerr << "Client disconnected or error reading\n";
+    } else{
+        if(strcmp(buff, "client") == 0) clients(newSocket);
+        else if (strcmp(buff, "server") == 0) servers(newSocket);
+    }
     close(newSocket);
-    pthread_exit(NULL);}
+    pthread_exit(NULL);
 }
 
 int main() {
