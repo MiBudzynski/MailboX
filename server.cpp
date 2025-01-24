@@ -53,6 +53,7 @@ void connectToOtherServers(string option, string sender, string receiver, string
             //TODO
             cout << "Synhronized with " << ip << endl;
         }else if(option == "New User"){
+            cout << "Sending New User information" << endl;
             usleep(100000);
             if (write(client_socket, option.c_str(), option.length()) <= 0) {
                 perror("Error sending option");
@@ -71,6 +72,7 @@ void connectToOtherServers(string option, string sender, string receiver, string
         }else if(option == "New Message"){
             char answer[256];
             memset(answer, 0, 256);
+            cout << "Trying to send new message..." << endl;
             usleep(100000);
             if (write(client_socket, option.c_str(), option.length()) <= 0) {
                 perror("Error sending option");
@@ -86,6 +88,7 @@ void connectToOtherServers(string option, string sender, string receiver, string
                 close(client_socket);
                 pthread_exit(NULL);
             }
+            cout << "Information from other server, Klient is: " << answer << endl;
             if(strcmp(answer, "Avalible") == 0){
                 usleep(100000);
                 if (write(client_socket, receiver.c_str(), receiver.length()) <= 0) {
@@ -102,6 +105,7 @@ void connectToOtherServers(string option, string sender, string receiver, string
                     perror("Error sending content");
                     close(client_socket);
                 }
+                cout << "Message send" << endl;
             }
         }
         close(client_socket);
@@ -159,7 +163,7 @@ void clients(int newSocket){
     if (write(newSocket, "Accept", 7) < 0){
         perror("Error writing to socket");
     }
-
+    cout << "Usser Accepted" << endl;
     while(true){
         char action[256];
         memset(action, 0, sizeof(action));
@@ -271,6 +275,7 @@ void servers(int newSocket){
             close(newSocket);
             pthread_exit(NULL);
         }
+        cout << "Received sender: " << sender << endl;
         if(!czyIstniejeUzytkownik(sender)){//sprawdzanie czy server posiada takiego uzytkownika
             if (write(newSocket, "Avalible", 9) <= 0) {
             perror("Error sending sender");
@@ -282,6 +287,7 @@ void servers(int newSocket){
                 close(newSocket);
                 pthread_exit(NULL);
             }
+            cout << "Received receiver: " << receiver << endl;
             // Odbiór tematu
             if (read(newSocket, subject, 256) <= 0) {
                 cerr << "Error reading subject\n";
@@ -301,6 +307,7 @@ void servers(int newSocket){
             perror("Error sending sender");
             close(newSocket);
             }
+            cout << "Unknown user" << endl;
         }
     }
 }
