@@ -69,6 +69,8 @@ void connectToOtherServers(string option, string sender, string receiver, string
                 close(client_socket);
             }
         }else if(option == "New Message"){
+            char answer[256];
+            memset(answer, 0, 256);
             usleep(100000);
             if (write(client_socket, option.c_str(), option.length()) <= 0) {
                 perror("Error sending option");
@@ -79,20 +81,27 @@ void connectToOtherServers(string option, string sender, string receiver, string
                 perror("Error sending sender");
                 close(client_socket);
             }
-            usleep(100000);
-            if (write(client_socket, receiver.c_str(), receiver.length()) <= 0) {
-                perror("Error sending receiver");
+            if (read(client_socket, answer, 256) <= 0) {
+                cerr << "Error reading password\n";
                 close(client_socket);
+                pthread_exit(NULL);
             }
-            usleep(100000);
-            if (write(client_socket, subject.c_str(), subject.length()) <= 0) {
-                perror("Error sending subject");
-                close(client_socket);
-            }
-            usleep(100000);
-            if (write(client_socket, other.c_str(), other.length()) <= 0) {
-                perror("Error sending content");
-                close(client_socket);
+            if(strcmp(answer, "Avalible") == 0){
+                usleep(100000);
+                if (write(client_socket, receiver.c_str(), receiver.length()) <= 0) {
+                    perror("Error sending receiver");
+                    close(client_socket);
+                }
+                usleep(100000);
+                if (write(client_socket, subject.c_str(), subject.length()) <= 0) {
+                    perror("Error sending subject");
+                    close(client_socket);
+                }
+                usleep(100000);
+                if (write(client_socket, other.c_str(), other.length()) <= 0) {
+                    perror("Error sending content");
+                    close(client_socket);
+                }
             }
         }
         close(client_socket);
@@ -262,26 +271,37 @@ void servers(int newSocket){
             close(newSocket);
             pthread_exit(NULL);
         }
-        // Odbiór odbiorcy
-        if (read(newSocket, receiver, 256) <= 0) {
-            cerr << "Error reading password\n";
+        if(!czyIstniejeUzytkownik(sender)){//sprawdzanie czy server posiada takiego uzytkownika
+            if (write(newSocket, "Avalible", 9) <= 0) {
+            perror("Error sending sender");
             close(newSocket);
-            pthread_exit(NULL);
-        }
-        // Odbiór tematu
-        if (read(newSocket, subject, 256) <= 0) {
-            cerr << "Error reading subject\n";
+            }
+            // Odbiór odbiorcy
+            if (read(newSocket, receiver, 256) <= 0) {
+                cerr << "Error reading password\n";
+                close(newSocket);
+                pthread_exit(NULL);
+            }
+            // Odbiór tematu
+            if (read(newSocket, subject, 256) <= 0) {
+                cerr << "Error reading subject\n";
+                close(newSocket);
+                pthread_exit(NULL);
+            }
+            // Odbiór tresci
+            if (read(newSocket, content, 1000) <= 0) {
+                cerr << "Error reading content\n";
+                close(newSocket);
+                pthread_exit(NULL);
+            }
+            addMessage(sender, receiver, subject, content);
+            cout << "Added new message from other server" << endl;
+        }else {
+            if (write(newSocket, "Unknown", 8) <= 0) {
+            perror("Error sending sender");
             close(newSocket);
-            pthread_exit(NULL);
+            }
         }
-        // Odbiór tresci
-        if (read(newSocket, content, 1000) <= 0) {
-            cerr << "Error reading content\n";
-            close(newSocket);
-            pthread_exit(NULL);
-        }
-        addMessage(sender, receiver, subject, content);
-        cout << "Added new message from other server" << endl;
     }
 }
 
