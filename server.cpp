@@ -9,9 +9,13 @@
 #include <fcntl.h> 
 #include <unistd.h>
 #include <pthread.h>
+#include <vector>
+#include <tuple>
+#include <string>
 #include "Database.h"
 
-const vector<string> ips = {"10.0.2.15"};
+
+const vector<string> ips = {"150.254.32.78"};
 using namespace std;
 
 void connectToOtherServers(string option, string sender, string receiver, string other, string subject) {
@@ -83,6 +87,11 @@ void connectToOtherServers(string option, string sender, string receiver, string
                 perror("Error sending sender");
                 close(client_socket);
             }
+            usleep(100000);
+            if (write(client_socket, receiver.c_str(), receiver.length()) <= 0) {
+                perror("Error sending receiver");
+                close(client_socket);
+            }
             if (read(client_socket, answer, 256) <= 0) {
                 cerr << "Error reading password\n";
                 close(client_socket);
@@ -90,11 +99,6 @@ void connectToOtherServers(string option, string sender, string receiver, string
             }
             cout << "Information from other server, Klient is: " << answer << endl;
             if(strcmp(answer, "Avalible") == 0){
-                usleep(100000);
-                if (write(client_socket, receiver.c_str(), receiver.length()) <= 0) {
-                    perror("Error sending receiver");
-                    close(client_socket);
-                }
                 usleep(100000);
                 if (write(client_socket, subject.c_str(), subject.length()) <= 0) {
                     perror("Error sending subject");
@@ -172,10 +176,12 @@ void clients(int newSocket){
             break;
         }
 
-        if(strcmp(action, "getMessages") == 0){
+        if (strcmp(action, "getMessages") == 0) {
             // Wysylanie aktualnie dostepnych wiadomosci
             vector<tuple<string, string>> topics = getTopics(login); 
-            for (const auto& [sender, topic] : topics) {
+            for (const auto& pom : topics) {
+                string sender = std::get<0>(pom);
+                string topic = std::get<1>(pom);
                 string mess = sender + ":" + topic;
                 cout << "message to  client: \n" << mess << endl;
                 if (write(newSocket, mess.c_str(), mess.length()) <= 0)
@@ -276,18 +282,18 @@ void servers(int newSocket){
             pthread_exit(NULL);
         }
         cout << "Received sender: " << sender << endl;
-        if(!czyIstniejeUzytkownik(sender)){//sprawdzanie czy server posiada takiego uzytkownika
+        // Odbiór odbiorcy
+        if (read(newSocket, receiver, 256) <= 0) {
+            cerr << "Error reading password\n";
+            close(newSocket);
+            pthread_exit(NULL);
+        }
+        cout << "Received receiver: " << receiver << endl;
+        if(czyIstniejeUzytkownik(receiver)){//sprawdzanie czy server posiada takiego uzytkownika
             if (write(newSocket, "Avalible", 9) <= 0) {
             perror("Error sending sender");
             close(newSocket);
             }
-            // Odbiór odbiorcy
-            if (read(newSocket, receiver, 256) <= 0) {
-                cerr << "Error reading password\n";
-                close(newSocket);
-                pthread_exit(NULL);
-            }
-            cout << "Received receiver: " << receiver << endl;
             // Odbiór tematu
             if (read(newSocket, subject, 256) <= 0) {
                 cerr << "Error reading subject\n";
